@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Super Soldier</title>
+
+<style>
+body{
+margin:0;
+background:black;
+overflow:hidden;
+font-family:Arial;
+color:white;
+}
+
+canvas{
+display:block;
+margin:auto;
+background:#0b0b0b;
+}
+
+#ui{
+position:absolute;
+top:10px;
+left:10px;
+font-size:18px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="ui"></div>
+<canvas id="game" width="1000" height="500"></canvas>
+
+<script>
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const ui = document.getElementById("ui");
+
+let gravity = 0.6;
+let score = 0;
+let gameOver = false;
+
+let player = {
+x:100,
+y:300,
+w:40,
+h:60,
+dx:0,
+dy:0,
+speed:5,
+jump:12,
+ground:false,
+health:5
+};
+
+let bullets = [];
+let enemies = [];
+let particles = [];
+let keys = {};
+
+document.addEventListener("keydown",e=>keys[e.key]=true);
+document.addEventListener("keyup",e=>keys[e.key]=false);
+
+document.addEventListener("keydown",e=>{
+if(e.key===" " && !gameOver){
+bullets.push({
+x:player.x+player.w,
+y:player.y+25,
+dx:10,
+w:10,
+h:4
+});
+}
+});
+
+function spawnEnemy(){
+
+enemies.push({
+x:canvas.width+50,
+y:320,
+w:40,
+h:50,
+dx:Math.random()*2+2,
+health:2
+});
+
+}
+
+setInterval(spawnEnemy,2000);
+
+function createExplosion(x,y){
+
+for(let i=0;i<10;i++){
+
+particles.push({
+x:x,
+y:y,
+dx:(Math.random()-0.5)*6,
+dy:(Math.random()-0.5)*6,
+life:30
+});
+
+}
+
+}
+
+function update(){
+
+if(gameOver) return;
+
+if(keys["ArrowRight"]) player.dx = player.speed;
+else if(keys["ArrowLeft"]) player.dx = -player.speed;
+else player.dx = 0;
+
+if(keys["ArrowUp"] && player.ground){
+player.dy = -player.jump;
+player.ground = false;
+}
+
+player.dy += gravity;
+
+player.x += player.dx;
+player.y += player.dy;
+
+if(player.y+player.h > 380){
+player.y = 380-player.h;
+player.dy = 0;
+player.ground = true;
+}
+
+bullets.forEach((b,i)=>{
+b.x += b.dx;
+
+if(b.x>canvas.width){
+bullets.splice(i,1);
+}
+});
+
+enemies.forEach((e,ei)=>{
+
+e.x -= e.dx;
+
+if(e.x < -50){
+enemies.splice(ei,1);
+}
+
+bullets.forEach((b,bi)=>{
+
+if(
+b.x < e.x+e.w &&
+b.x+b.w > e.x &&
+b.y < e.y+e.h &&
+b.y+b.h > e.y
+){
+
+e.health--;
+bullets.splice(bi,1);
+
+if(e.health<=0){
+createExplosion(e.x,e.y);
+enemies.splice(ei,1);
+score+=10;
+}
+
+}
+
+});
+
+if(
+player.x < e.x+e.w &&
+player.x+player.w > e.x &&
+player.y < e.y+e.h &&
+player.y+player.h > e.y
+){
+
+player.health--;
+createExplosion(player.x,player.y);
+
+enemies.splice(ei,1);
+
+if(player.health<=0){
+gameOver=true;
+}
+
+}
+
+});
+
+particles.forEach((p,i)=>{
+
+p.x += p.dx;
+p.y += p.dy;
+p.life--;
+
+if(p.life<=0){
+particles.splice(i,1);
+}
+
+});
+
+}
+
+function draw(){
+
+ctx.clearRect(0,0,canvas.width,canvas.height);
+
+ctx.fillStyle="#222";
+ctx.fillRect(0,380,canvas.width,120);
+
+ctx.fillStyle="lime";
+ctx.fillRect(player.x,player.y,player.w,player.h);
+
+ctx.fillStyle="yellow";
+bullets.forEach(b=>{
+ctx.fillRect(b.x,b.y,b.w,b.h);
+});
+
+ctx.fillStyle="red";
+enemies.forEach(e=>{
+ctx.fillRect(e.x,e.y,e.w,e.h);
+});
+
+ctx.fillStyle="orange";
+particles.forEach(p=>{
+ctx.fillRect(p.x,p.y,4,4);
+});
+
+ui.innerHTML =
+"Score: "+score+
+"<br>Health: "+player.health;
+
+if(gameOver){
+
+ctx.fillStyle="white";
+ctx.font="60px Arial";
+ctx.fillText("GAME OVER",350,200);
+
+ctx.font="30px Arial";
+ctx.fillText("Refresh to restart",380,260);
+
+}
+
+}
+
+function loop(){
+
+update();
+draw();
+requestAnimationFrame(loop);
+
+}
+
+loop();
+
+</script>
+
+</body>
+</html>
